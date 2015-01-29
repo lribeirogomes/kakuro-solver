@@ -14,9 +14,9 @@
 
 #include "defs.h"
 
-void error(int e)
+void error(int i)
 {
-  switch(e){
+  switch(i){
     case ARGV:printf("Erro: Falta colocar os dados do problema\n");
               break;
     case TIPOFICHEIRO:printf("Erro: Ficheiro nao pode ser lido.\n");
@@ -31,11 +31,9 @@ void error(int e)
                  break;
     case SOMA:printf("Erro nas somas do puzzle\n");
               break;
-    case CONSTANTE:printf("Erro K =0, o programa vai sair\n");
-                   break;
     case ALLOC:printf("Erro de alocação de memoria\n");
                break;
   }
   printf("\nSair do KAKURO\n");
-  exit(-1);
+  exit(0);
 }

@@ -11,23 +11,41 @@
 #ifndef DEFS_H_INCLUDED
 #define DEFS_H_INCLUDED
 
-#define I 0
-#define J 1
+#define LOWER 0
+#define UPPER 1
 
 #define PALAVRASIZE 50
 #define LINHASIZE 200
 
+#define CIMA 0
+#define BAIXO 1
+#define ESQUERDA 2
+#define DIREITA 3
+
 #define ARGV 1
 #define TIPOFICHEIRO 2
 #define FICHEIRO 3
-#define LINHA 5
-#define COLUNA 6
-#define LEITURA 7
-#define SOMA 8
-#define CONSTANTE 9
-#define ALLOC 10
+#define LINHA 4
+#define COLUNA 5
+#define LEITURA 6
+#define SOMA 7
+#define ALLOC 8
 
-typedef struct vector {int i,j,b,t,sol,**info;} vector;
-typedef struct matrix {int i,j,**Ab,*b[2];} matrix;
+#define PRIORLIMIT (100*v->i+v->j)
 
-#endif
+
+typedef struct vector {int i,j,sol,**info,*prior,*iprior,*jprior,cprior;} vector;
+
+FILE *openFile(char *s);
+FILE *addFile(char *s);
+void copyFile(FILE *fo,FILE *fi);
+
+vector *addMap(FILE *file,vector *v);
+vector *inputMap(FILE *file,vector *v);
+vector *modMap(vector *v);
+vector *sortMap(vector *v);
+void readMap(vector *v);
+void outputMap(FILE *fo,vector *v);
+vector *freeMap(vector *v);
+
+#endif // DEFS_H_INCLUDED

@@ -1,159 +1,228 @@
 /******************************************************************************
  *
- * Nome do Ficheiro: resolution.c
- *	                 (c) 2012 AED
- * Trabalho realizado por: ist172942 Gerardo Lima;
- *                         ist172904 Luís Gomes;
- * Descrição: Resolve o puzzle
+ * File Name: resolution.c
+ *	      (c) 2012 AED
+ * Authors:    ist172942 Gerardo Lima;
+ *             ist172904 Luís Gomes;
+ * Last modified: ACR 2012-10-30
+ * resolutionision:  v1.1
+ *
+ * COMMENTS
+ *		resolution subsistem
  *
  *****************************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "metGauss.h"
-#include "solFinder.h"
 #include "defs.h"
 #include "error.h"
+#include "resolution.h"
 
-/******************************************************************************
- * allocMatrix()
- *
- * Valores de entrada: solution - ponteiro da estrutura de dados do puzzle
- *                     solver - ponteiro da estrutura de dados da matrix resolvente
- * Valores de saída: solver - ponteiro da estrutura de dados da matrix resolvente
- * Descrição: Aloca a estrutura de dados da matrix resolvente
- *****************************************************************************/
+int searchSeed(vector *v,int *i,int *j)
+{
+  v->cprior++;
+  if(v->prior[v->cprior]==1000)
+  {
+    v->sol=1;
+    return 1;
+  }
+  *i=v->iprior[v->cprior];
+  *j=v->jprior[v->cprior];
 
-matrix *allocMatrix(vector *solution,matrix *solver)
+  return 0;
+}
+
+int diferentValue(vector *v,int i,int j,int info)
 {
   int aux;
 
-  solver=(matrix*)malloc(sizeof(matrix));
-  solver->i=solution->t;
-  solver->j=solution->b+1;
-  solver->Ab=(int**)calloc(solver->i,sizeof(int*));
-  for(aux=0;aux<solver->i;aux++) solver->Ab[aux]=(int*)calloc(solver->j,sizeof(int));
-  for(aux=0;aux<2;aux++) solver->b[aux]=(int*)calloc(solver->j,sizeof(int));
+  for(aux=i;aux!=v->i && v->info[aux][j]>0;aux++) if(info==v->info[aux][j]) return 0;
+  for(aux=j;aux!=v->j && v->info[i][aux]>0;aux++) if(info==v->info[i][aux]) return 0;
+  for(aux=i;v->info[aux][j]>0;aux--) if(info==v->info[aux][j]) return 0;
+  for(aux=j;v->info[i][aux]>0;aux--) if(info==v->info[i][aux]) return 0;
 
-  return solver;
+  return 1;
 }
 
-/******************************************************************************
- * completeVector()
- *
- * Valores de entrada: solution - ponteiro da estrutura de dados do puzzle
- *                     solver - ponteiro da estrutura de dados da matrix resolvente
- *                     vIndep - vector com a solução da matriz resolvente
- * Valores de saída: solution - ponteiro da estrutura de dados do puzzle
- * Descrição: Finaliza o preenchimento da estrutura de dados do puzzle
- *****************************************************************************/
-
-vector *completeVector(vector *solution,matrix *solver,int *vIndep)
+int generatev(vector *v,int i,int j,int seta,FILE *teste)
 {
-  int aux_j;
+  int info;
+  char x;
 
-  for(aux_j=0;aux_j<solver->j-1;aux_j++) solution->info[solver->b[I][aux_j]][solver->b[J][aux_j]]=vIndep[aux_j];
-  solution->sol=1;
-
-  return solution;
-}
-
-/******************************************************************************
- * freeMatrix()
- *
- * Valores de entrada: m - ponteiro da estrutura de dados da matrix resolvente
- * Valores de saída: NULL
- * Descrição: Liberta a estrutura de dados da matrix resolvente
- *****************************************************************************/
-
-matrix *freeMatrix(matrix *m)
-{
-  int aux;
-
-  for(aux=0;aux<m->i;aux++) free(m->Ab[aux]);
-  free(m->Ab);
-  free(m->b[0]);
-  free(m->b[1]);
-  free(m);
-
-  return NULL;
-}
-
-/******************************************************************************
- * fillMatrix()
- *
- * Valores de entrada: solution - ponteiro da estrutura de dados do puzzle
- *                     solver - ponteiro da estrutura de dados da matrix resolvente
- * Valores de saída: solver - ponteiro da estrutura de dados da matrix resolvente
- * Descrição: Preenche a estrutura de dados da matrix resolvente
- *****************************************************************************/
-
-matrix *fillMatrix(vector *solution,matrix *solver)
-{
-  int t=-1,i,j,b=0,**aux,upper=0,lower=0;
-
-  aux=solution->info;
-  for(i=0;i<solution->i;i++) for(j=0;j<solution->j;j++)
+  if(i==-1 || i==v->i || j==-1 || j==v->j)
   {
-    if(solution->info[i][j]%100<0)
-    {
-      t++;
-      solver->Ab[t][solver->j-1]=-solution->info[i][j]%100;
-      upper+=solver->Ab[t][solver->j-1];
-    }
-    if(solution->info[i][j]>0)
-    {
-      solver->b[I][b]=i;
-      solver->b[J][b]=j;
-      aux[i][j]=b+1;
-      solver->Ab[t][b]=1;
-      b++;
-    }
-  }
-  for(j=0;j<solution->j;j++) for(i=0;i<solution->i;i++)
-  {
-    if(solution->info[i][j]/100!=0)
-    {
-      t++;
-      solver->Ab[t][solver->j-1]=-solution->info[i][j]/100;
-      lower+=solver->Ab[t][solver->j-1];
-    }
-    if(aux[i][j]>0) solver->Ab[t][aux[i][j]-1]=1;
-  }
-  if(lower!=upper)
-  {
-    solver=freeMatrix(solver);
-    solution->sol=0;
+    fprintf(teste,"está no limite [%d][%d]\n",i+1,j+1);
+    return 0;
   }
 
-  return solver;
-}
+/*zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz*/
 
-/******************************************************************************
- * resolution()
- *
- * Valores de entrada: problem - ponteiro da estrutura de dados do puzzle
- * Valores de saída: solution - ponteiro da estrutura de dados do puzzle
- * Descrição: Interface do resolution.c
- *****************************************************************************/
+  if(v->info[i][j]<0)
+  {
+    int aux,sum=0,newseedi,newseedj;
+/*zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz*/
 
-vector *resolution(vector *solution)
-{
-  int *vIndep;
-  matrix *solver=NULL, *Morig=NULL;
+    if(seta==CIMA)
+    {
+      fprintf(teste,"está numa triangular inferior [%d][%d] - ",i+1,j+1);
+      for(aux=i+1;v->info[aux][j]<11 && v->info[aux][j]>0;aux++)
+      {
+        sum+=v->info[aux][j];
+        if(aux+1==v->i) break;
+      }
+      fprintf(teste,"([%d][%d]) -- info=%d sum=%d\n",i+1,j+1,-v->info[i][j]/100,sum);
+      if(sum==-v->info[i][j]/100)
+      {
+        fprintf(teste,"soma correcta: soma:%d == triangular:%d\n",sum,-v->info[i][j]/100);
+        fprintf(teste,"\n");
+        scanf("%c",&x);
+        readMap(v);
+        printf("soma correcta: soma:%d == triangular:%d\n",sum,-v->info[i][j]/100);
 
-  solver=allocMatrix(solution,solver);
-  solver=fillMatrix(solution,solver);
-  if(solver==NULL) return solution;
-  Morig=copiaMatrix(solver);
-  vIndep=metGauss(solution,solver);
-  if(solution->sol==0) return solution;
-  vIndep=solFinder(vIndep,solver,Morig);
-  solution=completeVector(solution,solver,vIndep);
-  free(vIndep);
-  solver=freeMatrix(solver);
-  Morig=freeMatrix(Morig);
+        if(searchSeed(v,&newseedi,&newseedj)==1) return 1;
+        v->cprior++;
+        newseedi=v->iprior[v->cprior];
+        newseedj=v->jprior[v->cprior];
 
-  return solution;
+        fprintf(teste,"vai para extremo direito [%d][%d]\n",newseedi+1,newseedj+1);
+        if(generatev(v,newseedi,newseedj,ESQUERDA,teste)==1) return 1;
+        fprintf(teste,"volta para [%d][%d]\n",i+1,j+1);
+        fprintf(teste,"\n");
+
+
+/*        fprintf(teste,"vai para direita [%d][%d]\n",i+2,j+2);
+        if(generatev(v,i+1,j+1,DIREITA,teste)==1) return 1;
+        fprintf(teste,"volta para [%d][%d]\n",i+1,j+1);
+        fprintf(teste,"\n");*/
+      }
+      fprintf(teste,"não dá a soma desejada: soma:%d != triangular:%d - ",sum,-v->info[i][j]/100);
+      return 0;
+    }
+
+/*zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz*/
+
+    if(seta==ESQUERDA)
+    {
+      fprintf(teste,"está numa triangular superior [%d][%d] - ",i+1,j+1);
+      for(aux=j+1;v->info[i][aux]<11 && v->info[i][aux]>0;aux++)
+      {
+        sum+=v->info[i][aux];
+        if(aux+1==v->j) break;
+      }
+      fprintf(teste,"([%d][%d]) -- info=%d sum=%d\n",i+1,j+1,-v->info[i][j]%100,sum);
+      if(sum==-v->info[i][j]%100)
+      {
+        fprintf(teste,"soma correcta: soma:%d == triangular:%d\n",sum,-v->info[i][j]%100);
+        fprintf(teste,"\n");
+        scanf("%c",&x);
+        readMap(v);
+        printf("soma correcta: soma:%d == triangular:%d\n",sum,-v->info[i][j]%100);
+
+        if(searchSeed(v,&newseedi,&newseedj)==1) return 1;
+        v->cprior++;
+        newseedi=v->iprior[v->cprior];
+        newseedj=v->jprior[v->cprior];
+
+        fprintf(teste,"vai para extremo baixo [%d][%d]\n",newseedi+1,newseedj+1);
+        if(generatev(v,newseedi,newseedj,CIMA,teste)==1) return 1;
+        fprintf(teste,"volta para [%d][%d]\n",i+1,j+1);
+        fprintf(teste,"\n");
+
+/*        fprintf(teste,"vai para baixo [%d][%d]\n",i+2,j+2);
+        if(generatev(v,i+1,j+1,BAIXO,teste)==1) return 1;
+        fprintf(teste,"volta para [%d][%d]\n",i+1,j+1);
+        fprintf(teste,"\n");*/
+      }
+      fprintf(teste,"não dá a soma desejada: soma:%d != triangular:%d - ",sum,-v->info[i][j]%100);
+      return 0;
+    }
+  }
+
+/*zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz*/
+
+  if(v->info[i][j]==0)
+  {
+    fprintf(teste,"está numa negra [%d][%d] - ",i+1,j+1);
+    return 0;
+  }
+
+/*zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz*/
+
+  if(v->info[i][j]>0 && v->info[i][j]<10)
+  {
+    fprintf(teste,"está numa branca já visitada [%d][%d] - ",i+1,j+1);
+
+    switch(seta)
+    {
+      case CIMA:fprintf(teste,"vai para cima [%d][%d]\n",i,j+1);
+                if(generatev(v,i-1,j,CIMA,teste)==1) return 1;
+                fprintf(teste,"volta para baixo [%d][%d]\n",i+1,j+1);
+                break;
+/*      case BAIXO:fprintf(teste,"vai para baixo [%d][%d]\n",i+2,j+1);
+                 if(generatev(v,i+1,j,BAIXO,teste)==1) return 1;
+                 fprintf(teste,"volta para cima [%d][%d]\n",i+1,j+1);
+                 break;*/
+      case ESQUERDA:fprintf(teste,"vai para esquerda [%d][%d]\n",i+1,j);
+                    if(generatev(v,i,j-1,ESQUERDA,teste)==1) return 1;
+                    fprintf(teste,"volta para direita [%d][%d]\n",i+1,j+1);
+                    break;
+/*      case DIREITA:fprintf(teste,"vai para direita [%d][%d]\n",i+1,j+2);
+                   if(generatev(v,i,j+1,DIREITA,teste)==1) return 1;
+                   fprintf(teste,"volta para esquerda [%d][%d]\n",i+1,j+1);
+                   break;*/
+    }
+    return 0;
+  }
+
+/*zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz*/
+
+  if(v->info[i][j]==10)
+  {
+    fprintf(teste,"está numa branca [%d][%d] - ",i+1,j+1);
+    for(info=9;info>0;info--)
+    {
+      if(diferentValue(v,i,j,info))
+      {
+        fprintf(teste,"([%d][%d]) -- newinfo=%d\n",i+1,j+1,info);
+        fprintf(teste,"\n");
+        v->info[i][j]=info;
+
+        if(seta==CIMA)
+        {
+          fprintf(teste,"vai para cima [%d][%d]\n",i,j+1);
+          if(generatev(v,i-1,j,CIMA,teste)==1) return 1;
+          fprintf(teste,"volta para baixo [%d][%d]\n",i+1,j+1);
+          fprintf(teste,"\n");
+        }
+
+/*      if(seta==BAIXO)
+      {
+        fprintf(teste,"vai para baixo [%d][%d]\n",i+2,j+1);
+        if(generatev(v,i+1,j,BAIXO,teste)==1) return 1;
+        fprintf(teste,"volta para cima [%d][%d]\n",i+1,j+1);
+        fprintf(teste,"\n");
+      }*/
+
+        if(seta==ESQUERDA)
+        {
+          fprintf(teste,"vai para esquerda [%d][%d]\n",i+1,j);
+          if(generatev(v,i,j-1,ESQUERDA,teste)==1) return 1;
+          fprintf(teste,"volta para direita [%d][%d]\n",i+1,j+1);
+          fprintf(teste,"\n");
+        }
+
+/*      if(seta==DIREITA)
+      {
+        fprintf(teste,"vai para direita [%d][%d]\n",i+1,j+2);
+        if(generatev(v,i,j+1,DIREITA,teste)==1) return 1;
+        fprintf(teste,"volta para esquerda [%d][%d]\n",i+1,j+1);
+        fprintf(teste,"\n");
+      }*/
+      }
+      else fprintf(teste,"info:%d não compatível",info);
+    }
+  }
+  v->info[i][j]=10;
+  return 0;
 }
